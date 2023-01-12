@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:http/http.dart' as http;
 
 class VideoPage extends StatefulWidget {
   const VideoPage({Key? key}) : super(key: key);
@@ -15,7 +16,7 @@ class VideoPage extends StatefulWidget {
 class _VideoPageState extends State<VideoPage> {
   String appId = "ee53689a4e864c05bf390abc9f8cbca3";
   String channelName = "maidscc";
-  final String token = "006ee53689a4e864c05bf390abc9f8cbca3IAALNUdKztrwCQkp1p1Nc/fy1qSjM+u1iZPHxfBLNirmKkOFH1gAAAAAIgDqUMunu07BYwQAAQBLC8BjAgBLC8BjAwBLC8BjBABLC8Bj";
+  String token = "";
   int uid = 0;
 
   int? _remoteUid; // uid of the remote user
@@ -37,6 +38,7 @@ class _VideoPageState extends State<VideoPage> {
     ));
   }
 
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -44,8 +46,9 @@ class _VideoPageState extends State<VideoPage> {
       home: Scaffold(
           body: Stack(
             children: [
+              _users.length == 0 && _isJoined ? Center(child: Text("Waiting for remote users"),) : SizedBox(),
               _viewRows(),
-              localVideoMuted ? const SizedBox(): Positioned(
+              localVideoMuted || !_isJoined ? const SizedBox(): Positioned(
                 right: 4,
                   bottom: 4,
                 child: ClipRRect(
@@ -58,7 +61,9 @@ class _VideoPageState extends State<VideoPage> {
                   ),
                 ),
               ),
-              _toolbar(),
+              Align(
+                  alignment: !_isJoined ? Alignment.center : Alignment.bottomLeft,
+                  child: _toolbar()),
             ],
           )),
     );
@@ -81,6 +86,11 @@ class _VideoPageState extends State<VideoPage> {
 
   Future<void> setupVideoSDKEngine() async {
     await [Permission.microphone, Permission.camera].request();
+
+    var response = await http.get(Uri.parse("http://52.199.90.226:8080/rtc/maidscc/publisher/userAccount/0"));
+    print("response ${response.body}");
+    token = jsonDecode(response.body)["rtcToken"];
+    print("response token $token");
 
     agoraEngine = createAgoraRtcEngine();
     await agoraEngine.initialize(RtcEngineContext(
@@ -246,63 +256,80 @@ class _VideoPageState extends State<VideoPage> {
   Widget _toolbar() {
     return Container(
       padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(bottom: 24),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: <Widget>[
-            RawMaterialButton(
-              onPressed: () => _muteVideo(),
-              shape: const CircleBorder(),
-              elevation: 2.0,
-              fillColor: localVideoMuted ? Colors.blueAccent : Colors.white,
-              padding: const EdgeInsets.all(12.0),
-              child: Icon(
-                localVideoMuted ? Icons.videocam_off : Icons.videocam,
-                color: localVideoMuted ? Colors.white : Colors.blueAccent,
-                size: 20.0,
+            Visibility(
+              visible: _isJoined,
+              child: RawMaterialButton(
+                onPressed: () => _muteVideo(),
+                shape: const CircleBorder(),
+                elevation: 2.0,
+                fillColor: localVideoMuted ? Colors.blueAccent : Colors.white,
+                padding: const EdgeInsets.all(12.0),
+                child: Icon(
+                  localVideoMuted ? Icons.videocam_off : Icons.videocam,
+                  color: localVideoMuted ? Colors.white : Colors.blueAccent,
+                  size: 20.0,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            RawMaterialButton(
-              onPressed: () => _onToggleMute(),
-              shape: const CircleBorder(),
-              elevation: 2.0,
-              fillColor: muted ? Colors.blueAccent : Colors.white,
-              padding: const EdgeInsets.all(12.0),
-              child: Icon(
-                muted ? Icons.mic_off : Icons.mic,
-                color: muted ? Colors.white : Colors.blueAccent,
-                size: 20.0,
+            Visibility(
+              visible: _isJoined,
+              child: RawMaterialButton(
+                onPressed: () => _onToggleMute(),
+                shape: const CircleBorder(),
+                elevation: 2.0,
+                fillColor: muted ? Colors.blueAccent : Colors.white,
+                padding: const EdgeInsets.all(12.0),
+                child: Icon(
+                  muted ? Icons.mic_off : Icons.mic,
+                  color: muted ? Colors.white : Colors.blueAccent,
+                  size: 20.0,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            RawMaterialButton(
-              onPressed: () => _muteRemoteAudio(),
-              shape: const CircleBorder(),
-              elevation: 2.0,
-              fillColor: muteAllAudios ? Colors.blueAccent : Colors.white,
-              padding: const EdgeInsets.all(12.0),
-              child: Icon(
-                muteAllAudios ? Icons.volume_off : Icons.volume_up,
-                color: muteAllAudios ? Colors.white : Colors.blueAccent,
-                size: 20.0,
+            Visibility(
+              visible: _isJoined,
+              child: RawMaterialButton(
+                onPressed: () => _muteRemoteAudio(),
+                shape: const CircleBorder(),
+                elevation: 2.0,
+                fillColor: muteAllAudios ? Colors.blueAccent : Colors.white,
+                padding: const EdgeInsets.all(12.0),
+                child: Icon(
+                  muteAllAudios ? Icons.volume_off : Icons.volume_up,
+                  color: muteAllAudios ? Colors.white : Colors.blueAccent,
+                  size: 20.0,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            RawMaterialButton(
-              onPressed: () => _onSwitchCamera(),
-              shape: const CircleBorder(),
-              elevation: 2.0,
-              fillColor: Colors.white,
-              padding: const EdgeInsets.all(12.0),
-              child: const Icon(
-                Icons.switch_camera,
-                color: Colors.blueAccent,
-                size: 20.0,
+            Visibility(
+              visible: _isJoined,
+              child: RawMaterialButton(
+                onPressed: () => _onSwitchCamera(),
+                shape: const CircleBorder(),
+                elevation: 2.0,
+                fillColor: Colors.white,
+                padding: const EdgeInsets.all(12.0),
+                child: const Icon(
+                  Icons.switch_camera,
+                  color: Colors.blueAccent,
+                  size: 20.0,
+                ),
               ),
             ),
             const SizedBox(height: 8),
+            !_isJoined ? const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text("Press the below button to connect"),
+            ) : const SizedBox(),
             RawMaterialButton(
               onPressed: () => _onCall(context),
               shape: const CircleBorder(),
@@ -312,7 +339,7 @@ class _VideoPageState extends State<VideoPage> {
               child: Icon(
                 _isJoined ? Icons.call_end : Icons.call,
                 color: _isJoined ? Colors.red : Colors.blue,
-                size: 20.0,
+                size: _isJoined ? 20.0 : 48,
               ),
             ),
           ],

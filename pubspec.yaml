@@ -19,6 +19,7 @@ dependencies:
   permission_handler: ^10.2.0
   cupertino_icons: ^1.0.2
   crypto: ^3.0.2
+  http:
 
 dev_dependencies:
   flutter_test:
