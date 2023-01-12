@@ -88,9 +88,13 @@ class _VideoPageState extends State<VideoPage> {
     await [Permission.microphone, Permission.camera].request();
 
     var response = await http.get(Uri.parse("http://52.199.90.226:8080/rtc/maidscc/publisher/userAccount/0"));
-    print("response ${response.body}");
-    token = jsonDecode(response.body)["rtcToken"];
-    print("response token $token");
+    if(response.statusCode == 200) {
+      print("response ${response.body}");
+      token = jsonDecode(response.body)["rtcToken"];
+      print("response token $token");
+    } else {
+      showMessage("Failed to get a token from remote server");
+    }
 
     agoraEngine = createAgoraRtcEngine();
     await agoraEngine.initialize(RtcEngineContext(
